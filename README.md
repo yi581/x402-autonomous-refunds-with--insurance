@@ -1,517 +1,356 @@
-# X402 Autonomous Refund Mechanism
+# X402 Insurance Protocol V2
 
-A trustless, blockchain-based refund system for the x402 payment protocol. This POC demonstrates how service providers can use bonded escrow and EIP-712 signatures to enable instant, autonomous refunds when services fail to deliver.
+> Zero-Fee Insurance for Web3 API Payments
 
-> ⚠️ **SECURITY NOTICE**: This is a proof-of-concept for educational and demonstration purposes only. DO NOT use in production without a thorough security audit. Always use fresh wallet addresses and never commit private keys to version control.
+A novel insurance protocol that protects clients making API payments without charging insurance fees. Service providers deposit bonds, which are temporarily locked during transactions and used for compensation in case of service failures.
 
 ## Overview
 
-### Problem
-In prepaid API payment systems:
-- Clients pay upfront but may not receive the service
-- Traditional refunds require manual processing and trust
-- Failed transactions lock up funds
+X402 Insurance V2 implements a **zero insurance fee model** where:
 
-### Solution
-**Bonded Escrow + Signed Refund Authorization**
+- Clients pay only for the service (e.g., 1 USDC)
+- No additional insurance premium required
+- Service providers deposit collateral bonds
+- Automatic compensation if service fails
+- Platform earns 2% penalty on failures
 
-1. Service providers deposit USDC as bond in a smart contract
-2. When service fails, server signs an EIP-712 refund authorization
-3. Clients autonomously claim refunds on-chain
-4. No intermediaries, no delays, no trust required
+### Key Innovation
 
-## Architecture
+Unlike traditional insurance where clients pay premiums, this protocol shifts the economic model:
 
-```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│   Client    │◄───────►│  Facilitator │◄───────►│   Server    │
-│             │  x402   │              │  x402   │             │
-│ client.ts   │ Payment │ facilitator  │ Verify  │ server.ts   │
-└──────┬──────┘         └──────────────┘         └──────┬──────┘
-       │                                                 │
-       │ 1. Check isHealthy()                           │
-       │──────────┐                                     │
-       │          ▼                                     │
-       │   ┌──────────────┐                            │
-       │   │ BondedEscrow │◄───────────────────────────┘
-       │   │   Contract   │     Sign Refund
-       │   └──────────────┘
-       │          │
-       │ 2. claimRefund()
-       └──────────┘
-```
+1. **Providers Bear Risk**: Service providers deposit bonds
+2. **Clients Get Free Protection**: No insurance fees, only gas costs
+3. **Aligned Incentives**: Providers motivated to deliver quality service
+4. **Automatic Enforcement**: Smart contract handles all settlements
 
-## Project Structure
+##  Architecture
 
 ```
-x402-refunds-poc/
-├── contracts/              # Solidity smart contracts (Foundry)
+┌─────────────┐          ┌──────────────┐         ┌─────────────┐
+│   Client    │          │   Provider   │         │  Platform   │
+└──────┬──────┘          └──────┬───────┘         └─────────────┘
+       │                        │                         
+       │   1. x402 Payment      │                         
+       │   (1 USDC)            │                         
+       ├───────────────────────>│                         
+       │                        │                         
+       │   2. Purchase Insurance│                         
+       │   (0 USDC fee!)       │                         
+       ├───────────────────────>│ [Lock 1.02 USDC bond]  
+       │                        │                         
+       │                        │                         
+       │   ┌─── Success ────┐   │                         
+       │   │ 3a. Confirm    │   │                         
+       │   │ (EIP-712 sig)  │   │ [Unlock bond]          
+       │   └────────────────┘   │ Provider keeps 1 USDC   
+       │                        │                         
+       │   ┌─── Failure ────┐   │                         
+       │   │ 3b. Timeout    │   │                         
+       │   │ 4. Claim       │   │ [Bond: -2.04 USDC]     
+       │   │   Client: +2   │   │ [Client: +2 USDC]      
+       │   │   Platform: +0.04  │ [Platform: +0.04 USDC] 
+       │   └────────────────┘   │                         
+       │                        │                         
+```
+
+##  Features
+
+### For Clients
+- **Zero Insurance Fees**: Pay only for the service
+- **Automatic Protection**: Insurance included by default
+- **Quick Compensation**: Instant refund on service failure (2x payment)
+- **No Approval Needed**: Just submit claim after timeout
+
+### For Service Providers
+- **Bond Efficiency**: Locked only during active orders
+- **EIP-712 Signatures**: Gas-efficient service confirmation
+- **Flexible Deposits**: Add/withdraw bonds anytime
+- **Reputation System**: Build trust through successful deliveries
+
+### For Platform
+- **Risk-Free Revenue**: Earn 2% penalty only on failures
+- **Self-Regulating**: Bad providers naturally exit
+- **Minimal Overhead**: Smart contract automation
+- **Transparent**: All transactions on-chain
+
+##  Repository Structure
+
+```
+X402/
+├── contracts/                    # Solidity smart contracts
 │   ├── src/
-│   │   └── BondedEscrow.sol       # Main escrow contract
+│   │   └── X402InsuranceV2.sol  # Main insurance contract
 │   ├── script/
-│   │   └── Deploy.s.sol           # Deployment script
+│   │   └── DeployInsuranceV2.s.sol
+│   ├── test/
+│   │   └── X402InsuranceV2.t.sol
+│   ├── .env.example             # Contract config template
 │   └── foundry.toml
 │
-├── services/               # TypeScript services
-│   ├── src/
-│   │   ├── facilitator.ts         # x402 payment facilitator
-│   │   ├── server.ts              # Resource server with refund logic
-│   │   ├── client.ts              # Client with autonomous refund
-│   │   └── utils.ts               # Shared utilities
-│   └── abi/
-│       └── BondedEscrow.json      # Contract ABI
+├── services/                    # Off-chain services (future)
+│   ├── facilitator/            # Payment processor
+│   ├── server/                 # Resource provider
+│   └── client/                 # SDK & examples
 │
-├── package.json            # Workspace root
-└── pnpm-workspace.yaml
+├── test-*.sh                   # On-chain test scripts
+├── SETUP.md                    # Detailed setup guide
+├── CONTRIBUTING.md             # Contribution guidelines
+├── LICENSE                     # CC BY-NC 4.0
+└── README.md                   # This file
 ```
 
-## Prerequisites
+##  Quick Start
 
-- **Node.js** >= 18
-- **pnpm** >= 8
-- **Foundry** (forge, anvil, cast)
-- **Base Sepolia RPC** or local fork
-
-### Install Foundry
+### Prerequisites
 
 ```bash
+# Install Foundry
 curl -L https://foundry.paradigm.xyz | bash
 foundryup
-```
 
-### Install pnpm
+# Install Node.js 18+
+nvm install 18
+nvm use 18
 
-```bash
+# Install pnpm
 npm install -g pnpm
 ```
 
-## Quick Start
-
-### 1. Clone and Install
+### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/your-username/X402.git
 cd X402
-pnpm install
-```
 
-### 2. Install Foundry Dependencies
-
-```bash
+# Install contract dependencies
 cd contracts
-forge install OpenZeppelin/openzeppelin-contracts --no-commit
+forge install
 cd ..
 ```
 
-### 3. Setup Environment Variables
-
-#### Contracts
+### 2. Configure Environment
 
 ```bash
 cd contracts
 cp .env.example .env
-# Edit .env with your values
 ```
 
-Required variables:
-- `PRIVATE_KEY`: Deployer private key
-- `RPC_URL`: Blockchain RPC endpoint
-- `USDC_ADDRESS`: USDC token contract address
-- `SELLER_ADDRESS`: Server signing address
-- `MIN_BOND`: Minimum bond (e.g., 100000000 = 100 USDC)
-
-#### Services
-
+Edit `.env`:
 ```bash
-cd services
-cp .env.example .env
-# Edit .env with your values
+PRIVATE_KEY=your_testnet_private_key
+RPC_URL=https://sepolia.base.org
+USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e  # Base Sepolia USDC
+PLATFORM_TREASURY=your_treasury_address
+PLATFORM_PENALTY_RATE=200  # 2%
+DEFAULT_TIMEOUT=5          # minutes
 ```
 
-Required variables:
-- `RPC_URL`: Same as contracts
-- `CHAIN_ID`: Chain ID (84532 for Base Sepolia)
-- `FACILITATOR_PRIVATE_KEY`: Facilitator wallet
-- `SERVER_PRIVATE_KEY`: Server signing wallet
-- `CLIENT_PRIVATE_KEY`: Client wallet
-- `USDC_ADDRESS`: USDC token address
-- `BOND_ESCROW_ADDRESS`: (Set after deployment)
-
-### 4. Start Local Blockchain (Option A)
-
-For testing, use Anvil with Base Sepolia fork:
-
-```bash
-anvil --fork-url <base-sepolia-rpc-url>
-```
-
-**OR** use a live testnet (Option B) by setting `RPC_URL` to Base Sepolia RPC.
-
-### 5. Deploy Contract
+### 3. Deploy Contract
 
 ```bash
 cd contracts
 
-# Ensure .env is configured
-forge script script/Deploy.s.sol:DeployBondedEscrow \
+forge script script/DeployInsuranceV2.s.sol:DeployInsuranceV2 \
   --rpc-url $RPC_URL \
-  --broadcast
-
-# Copy the deployed contract address
-# Update BOND_ESCROW_ADDRESS in services/.env
+  --broadcast \
+  --verify
 ```
 
-### 6. Fund Contract with USDC
+Save the deployed contract address!
 
-Approve and deposit bond:
+### 4. Provider: Deposit Bond
 
 ```bash
+INSURANCE=0x<deployed-contract-address>
+
 # Approve USDC
 cast send $USDC_ADDRESS \
   "approve(address,uint256)" \
-  $BOND_ESCROW_ADDRESS \
-  100000000 \
+  $INSURANCE \
+  50000000 \
   --private-key $PRIVATE_KEY \
   --rpc-url $RPC_URL
 
-# Deposit bond
-cast send $BOND_ESCROW_ADDRESS \
-  "deposit(uint256)" \
-  100000000 \
+# Deposit 50 USDC bond
+cast send $INSURANCE \
+  "depositBond(uint256)" \
+  50000000 \
   --private-key $PRIVATE_KEY \
   --rpc-url $RPC_URL
 ```
 
-### 7. Fund Client Wallet
-
-Transfer USDC to client address:
+### 5. Run On-Chain Tests
 
 ```bash
-# Get client address
-cast wallet address --private-key $CLIENT_PRIVATE_KEY
+# Success scenario: 1 USDC payment, service delivered
+bash test-success-simple.sh
 
-# Transfer USDC (from another wallet or faucet)
-cast send $USDC_ADDRESS \
-  "transfer(address,uint256)" \
-  <client-address> \
-  10000000 \
-  --private-key <funder-private-key> \
-  --rpc-url $RPC_URL
+# Failure scenario: 2 USDC payment, timeout, claim compensation
+bash test-complete-success-flow.sh
 ```
 
-### 8. Start Services
+##  Economic Model
 
-Open 3 terminal windows:
+### Success Scenario (95%+ expected)
 
-**Terminal 1 - Facilitator**
-```bash
-cd services
-pnpm facilitator
-```
+| Party    | Action                          | Amount      |
+|----------|---------------------------------|-------------|
+| Client   | Pays for service (x402)         | -1 USDC     |
+| Client   | Purchases insurance             | -0 USDC  |
+| Provider | Receives payment                | +1 USDC     |
+| Provider | Bond locked temporarily         | 1.02 USDC   |
+| Provider | Bond unlocked (confirmed)       | 1.02 USDC   |
+| Platform | Revenue                         | 0 USDC      |
 
-**Terminal 2 - Server**
-```bash
-cd services
-pnpm server
-```
+**Result**: Client gets service, Provider earns 1 USDC, Platform earns nothing.
 
-**Terminal 3 - Client**
-```bash
-cd services
-pnpm client
-```
+### Failure Scenario (<5% expected)
 
-## How It Works
+| Party    | Action                          | Amount      |
+|----------|---------------------------------|-------------|
+| Client   | Paid for service (x402)         | -1 USDC     |
+| Client   | Claims insurance (2x refund)    | +2 USDC     |
+| Client   | Net gain                        | +1 USDC  |
+| Provider | Keeps payment (already settled) | 1 USDC kept |
+| Provider | Bond deducted (compensation)    | -2.04 USDC  |
+| Provider | Net loss                        | -1.04 USDC  |
+| Platform | Penalty collected               | +0.04 USDC  |
 
-### Step-by-Step Flow
+**Result**: Client gets 2x refund, Provider loses 1.04 USDC total, Platform earns 0.04 USDC penalty.
 
-1. **Client Pre-Flight Check**
-   - Queries server for escrow address (`GET /escrow`)
-   - Calls `escrow.isHealthy()` to verify sufficient bond
-   - Aborts if bond is insufficient
+###  Why This Works
 
-2. **Paid Request**
-   - Client creates x402 payment signature
-   - Sends request with `x-payment` header
-   - Server attempts to fulfill service
+1. **Provider Incentive**: Losing 1.04 USDC per failure is expensive  providers deliver
+2. **Client Benefit**: Free insurance + profit on failures  clients protected
+3. **Platform Revenue**: Sustainable from penalties without burdening clients
+4. **Market Equilibrium**: Bad providers exit naturally (bond depletion)
 
-3. **Service Failure**
-   - Server encounters error (simulated by `/fail` endpoint)
-   - Calculates `requestCommitment` hash:
-     ```typescript
-     keccak256(method, url, xpay, window)
-     ```
-   - Signs EIP-712 refund authorization
-   - Returns 400 with refund bundle
+##  Security
 
-4. **Autonomous Refund**
-   - Client receives signed refund authorization
-   - Verifies `requestCommitment` matches
-   - Calls `escrow.claimRefund(commitment, amount, signature)`
-   - Receives USDC refund instantly
+### Audit Status
 
-### Request Commitment
+- **Status**: ⚠️ **NOT AUDITED**
+- **Use Case**: Testnet, research, education only
+- **Production**: DO NOT deploy to mainnet without professional audit
 
-The request commitment is a unique hash that prevents double-refunds:
+### Known Considerations
 
-```typescript
-requestCommitment = keccak256(
-  abi.encode(
-    "GET",                           // HTTP method
-    "http://localhost:3000/fail",    // Full URL
-    "0x...",                         // x-payment header
-    "60"                             // Time window
-  )
-)
-```
+1. **Bond Management**: Providers must monitor bond levels
+2. **Timeout Settings**: 5-minute default (configurable)
+3. **EIP-712 Signatures**: Secure but requires proper key management
+4. **Reentrancy**: Protected via OpenZeppelin SafeERC20
+5. **Oracle Independence**: No price feeds required (fixed USDC amounts)
 
-### EIP-712 Signature
+### Responsible Disclosure
 
-Server signs refund using typed data:
+Found a security issue? Please email: security@[your-domain].com
 
-```typescript
-Domain: {
-  name: "BondedEscrow"
-  version: "1"
-  chainId: 84532
-  verifyingContract: <escrow-address>
-}
+Do not open public issues for vulnerabilities.
 
-Types: {
-  RefundClaim: [
-    { name: "requestCommitment", type: "bytes32" }
-    { name: "amount", type: "uint256" }
-  ]
-}
-```
+##  Testing
 
-## Smart Contract API
-
-### BondedEscrow.sol
-
-#### Core Functions
-
-**`deposit(uint256 amount)`**
-- Deposits USDC bond into escrow
-- Only callable by owner
-- Emits `BondDeposited` event
-
-**`withdraw(uint256 amount)`**
-- Withdraws bond (must maintain minimum)
-- Only callable by owner
-- Reverts if balance < minBond after withdrawal
-
-**`claimRefund(bytes32 requestCommitment, uint256 amount, bytes signature)`**
-- Claims refund with server signature
-- Verifies EIP-712 signature
-- Prevents double-refund via `commitmentSettled` mapping
-- Transfers USDC to caller
-
-**`isHealthy() → bool`**
-- Returns true if balance >= minBond
-- Used by clients for pre-flight check
-
-**`getBondBalance() → uint256`**
-- Returns current USDC balance in escrow
-
-#### Events
-
-```solidity
-event BondDeposited(address indexed from, uint256 amount);
-event BondWithdrawn(address indexed to, uint256 amount);
-event RefundClaimed(bytes32 indexed requestCommitment, address indexed recipient, uint256 amount);
-```
-
-## Server Endpoints
-
-### `GET /escrow`
-Returns escrow contract address
-
-**Response:**
-```json
-{
-  "success": true,
-  "address": "0x..."
-}
-```
-
-### `GET /premium` (x402 paid)
-Successful paid endpoint
-
-**Headers:**
-- `x-payment`: Signed x402 payment
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Premium content delivered!",
-  "data": { ... }
-}
-```
-
-### `GET /fail` (x402 paid)
-Simulates service failure with refund
-
-**Headers:**
-- `x-payment`: Signed x402 payment
-
-**Response (400):**
-```json
-{
-  "success": false,
-  "code": "INTERNAL_ERROR",
-  "message": "Service temporarily unavailable",
-  "requestCommitment": "0xabcd...",
-  "refund": {
-    "amount": "1000000",
-    "signature": "0x..."
-  }
-}
-```
-
-## Configuration Reference
-
-### Base Sepolia Addresses
+### On-Chain Integration Tests
 
 ```bash
-CHAIN_ID=84532
-USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
-RPC_URL=https://sepolia.base.org
+# Test success flow
+bash test-success-simple.sh
+
+# Test failure + claim flow
+bash wait-and-claim.sh
+
+# View results on BaseScan
+https://sepolia.basescan.org/address/<your-address>
 ```
 
-### Anvil Test Accounts
-
-```bash
-# Account 0
-PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-
-# Account 1
-PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
-ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-
-# Account 2
-PRIVATE_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
-ADDRESS=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
-```
-
-## Testing Scenarios
-
-### Scenario 1: Successful Payment
-
-```bash
-# Client requests /premium
-# Payment verified -> Content delivered
-# No refund needed
-```
-
-### Scenario 2: Failed Service + Refund
-
-```bash
-# Client requests /fail
-# Server returns 400 + signed refund
-# Client claims refund on-chain
-# USDC returned to client
-```
-
-### Scenario 3: Insufficient Bond
-
-```bash
-# Escrow balance < minBond
-# isHealthy() returns false
-# Client aborts request
-```
-
-## Security Considerations
-
-- Contract is **unaudited** - educational purposes only
-- Do not use with real funds or in production
-- Server must protect private key (refund signing authority)
-- Request commitment prevents replay attacks
-- EIP-712 ensures signature cannot be used on other chains/contracts
-
-## Limitations
-
-1. **Trust Assumption**: Server must honestly sign refunds
-2. **No Automated Validation**: Cannot prove service failure on-chain
-3. **Single Token**: Only supports USDC
-4. **Fixed Chain**: Hardcoded for Base Sepolia
-5. **Server Crash**: If server is completely down, no signature can be obtained
-
-## Future Improvements
-
-- Multi-token support (ETH, DAI, etc.)
-- Multi-chain deployment
-- Timeout-based automatic refunds
-- Off-chain dispute resolution integration
-- Reputation system for service providers
-- ZK proofs for service quality verification
-
-## Troubleshooting
-
-### "Insufficient USDC balance"
-
-```bash
-# Check balance
-cast call $USDC_ADDRESS "balanceOf(address)(uint256)" <your-address> --rpc-url $RPC_URL
-
-# Get USDC from faucet or transfer
-```
-
-### "Escrow is not healthy"
-
-```bash
-# Check bond balance
-cast call $BOND_ESCROW_ADDRESS "getBondBalance()(uint256)" --rpc-url $RPC_URL
-
-# Deposit more bond
-cast send $BOND_ESCROW_ADDRESS "deposit(uint256)" <amount> --private-key $PRIVATE_KEY --rpc-url $RPC_URL
-```
-
-### "AlreadySettled" error
-
-This request has already been refunded. Request commitments are single-use.
-
-### "InvalidSignature" error
-
-Server signature verification failed. Check:
-- `SELLER_ADDRESS` matches `SERVER_PRIVATE_KEY` in deployment
-- EIP-712 domain matches contract deployment
-
-## Development
-
-### Build Contracts
+### Smart Contract Tests
 
 ```bash
 cd contracts
-forge build
+forge test -vvv
 ```
 
-### Run Tests
+##  Roadmap
+
+- [x] Core insurance protocol (V2)
+- [x] Zero-fee model implementation
+- [x] EIP-712 signature verification
+- [x] On-chain testing (Base Sepolia)
+- [ ] Professional security audit
+- [ ] Multi-token support (ETH, DAI)
+- [ ] Off-chain facilitator service
+- [ ] Client SDK (x402-axios)
+- [ ] Mainnet deployment
+- [ ] DAO governance
+
+##  Use Cases
+
+### 1. Web3 API Services
+```javascript
+// Client pays 1 USDC for API call
+// Automatically protected by insurance
+// No extra fees!
+const response = await fetch('https://api.example.com/data', {
+  headers: { 'x-payment': '1000000' }  // 1 USDC in wei
+});
+```
+
+### 2. Micropayments
+- Pay-per-request APIs
+- Content access (articles, videos)
+- Computation services
+- Data feeds
+
+### 3. Service Level Agreements
+- Uptime guarantees
+- Response time SLAs
+- Data quality assurance
+
+##  Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
 
 ```bash
-cd contracts
-forge test
+# Install dependencies
+pnpm install
+
+# Run tests
+cd contracts && forge test
+
+# Check for issues
+forge fmt --check
 ```
 
-### Typecheck Services
+##  License
 
-```bash
-cd services
-pnpm typecheck
-```
+**CC BY-NC 4.0** - Creative Commons Attribution-NonCommercial 4.0 International
 
-## References
+- ✅ **Permitted**: Research, education, testing, non-commercial use
+- ❌ **Prohibited**: Commercial production, SaaS, revenue-generating use
 
-- [EIP-712: Typed structured data hashing](https://eips.ethereum.org/EIPS/eip-712)
-- [x402 Protocol](https://github.com/coinbase/x402)
-- [Base Sepolia Docs](https://docs.base.org/network-information)
+For commercial licensing, please contact the maintainers.
 
-## License
+##  Links
 
-MIT
+- **Documentation**: [docs/](docs/)
+- **Setup Guide**: [SETUP.md](SETUP.md)
+- **Test Results**: [FINAL_CHAIN_TEST_REPORT.md](FINAL_CHAIN_TEST_REPORT.md)
+- **Scenario Analysis**: [SCENARIO_COMPARISON.md](SCENARIO_COMPARISON.md)
 
-## Disclaimer
+##  Disclaimer
 
-This is a proof-of-concept for educational purposes. The smart contracts are unaudited and should not be used with real funds or in production environments.
+This software is provided for educational purposes only. Smart contracts have not been audited. DO NOT use with real funds. Use at your own risk.
+
+The protocol is experimental. Users assume all risks including but not limited to:
+- Smart contract bugs
+- Economic exploits
+- Network failures
+- Loss of funds
+
+---
+
+**Built with**  
+Solidity · Foundry · OpenZeppelin · EIP-712 · Base
+
+**Status**: 🧪 Testnet Only | ⚠️ Not Audited | 📚 Educational

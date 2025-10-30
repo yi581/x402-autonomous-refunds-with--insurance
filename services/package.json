@@ -7,6 +7,8 @@
     "facilitator": "tsx src/facilitator.ts",
     "server": "tsx src/server.ts",
     "client": "tsx src/client.ts",
+    "client:insurance": "tsx src/client-with-insurance.ts",
+    "relayer": "tsx src/relayer.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"

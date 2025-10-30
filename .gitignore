@@ -1,51 +1,75 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Testing
-coverage/
-*.lcov
-
-# Production
-build/
-dist/
-out/
-
-# Environment
+# Environment variables (CRITICAL - Contains private keys!)
 .env
-.env.*
 .env.local
 .env.*.local
-services/.env
-services/.env.*
+*.env
+!.env.example
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+cache/
+
+# Foundry
+contracts/lib/
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+*.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
 # Logs
-logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Test artifacts
+coverage/
+coverage.json
+*.lcov
+.coverage_artifacts/
+.coverage_cache/
 
-# OS
-.DS_Store
+# Temporary files
+*.tmp
+*.temp
+temp-*.js
+temp-*.json
+
+# Private keys and wallets
+*.key
+*.pem
+wallet.json
+keystore/
+
+# Deployment artifacts (may contain addresses/sensitive info)
+deployments/
+.openzeppelin/
+
+# OS files
 Thumbs.db
-
-# Foundry
-cache/
-broadcast/
-lib/
+.DS_Store
 
 # TypeScript
 *.tsbuildinfo
 
-# Refund receipts
+# Refund receipts (may contain user data)
 refund-*.json
+
+# Test wallets/keys (just in case)
+test-private-keys.txt
+accounts.json

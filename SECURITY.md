@@ -1,115 +1,142 @@
-# Security Considerations
+# Security Policy
 
-## ⚠️ Important Notices
+## Reporting a Vulnerability
 
-### 🔒 This is a Proof of Concept
-- **DO NOT** use this code in production without a thorough security audit
-- This project is for educational and demonstration purposes only
-- The smart contracts have not been audited by professional security firms
+We take security seriously. If you discover a security vulnerability in the X402 Insurance Protocol, please help us protect our users by following responsible disclosure practices.
 
-### 🔐 Private Key Management
+### How to Report
 
-**NEVER commit private keys to version control!**
+**DO NOT** create a public GitHub issue for security vulnerabilities.
 
-The following files are automatically excluded by `.gitignore`:
-- `services/.env`
-- `services/.env.*`
-- All `.env*` files
+Instead, please email:
+- **Email**: security@[your-domain].com
+- **Subject**: "Security Vulnerability: X402 Insurance Protocol"
 
-### 🧪 Test Networks Only
+### What to Include
 
-The deployed contracts and wallets shown in this README are on **Base Sepolia testnet**:
-- Escrow Contract: `0x60c3CA86175692d452D7e3A488Ef39Ca7aa65b9a`
-- These addresses contain only testnet tokens with no real value
-- The private keys used are for demonstration only and should NEVER be used on mainnet
+1. **Description**: Detailed explanation of the vulnerability
+2. **Impact**: Potential consequences and severity
+3. **Steps to Reproduce**: Clear instructions to verify the issue
+4. **Proof of Concept**: Code or transaction examples (if applicable)
+5. **Suggested Fix**: Optional but appreciated
+6. **Your Contact**: How we can reach you for follow-up
 
-## 🛡️ Security Best Practices
+### Response Timeline
 
-### For Development
+- **Acknowledgment**: Within 48 hours
+- **Initial Assessment**: Within 7 days
+- **Fix Development**: Depends on severity (1-30 days)
+- **Disclosure**: After fix deployment (coordinated disclosure)
 
-1. **Use `.env.example` as template**
-   ```bash
-   cp services/.env.example services/.env
-   # Edit services/.env with your own private keys
-   ```
+### Severity Classification
 
-2. **Generate fresh wallets**
-   ```bash
-   cast wallet new  # Generate new wallet addresses
-   ```
+| Severity | Description | Bounty Range |
+|----------|-------------|--------------|
+| **Critical** | Funds can be stolen, protocol broken | TBD |
+| **High** | Economic attacks, griefing, DoS | TBD |
+| **Medium** | Business logic flaws, edge cases | TBD |
+| **Low** | Informational, best practice improvements | Recognition |
 
-3. **Never reuse testnet keys**
-   - Always generate new keys for each deployment
-   - Testnet keys can be compromised and should not be used on mainnet
+### Scope
 
-### For Production (If You Proceed)
+#### In Scope
 
-1. **Smart Contract Audit**
-   - Get a professional security audit from firms like:
-     - Trail of Bits
-     - OpenZeppelin
-     - Consensys Diligence
+- Smart contracts in `contracts/src/`
+- Economic model exploits
+- Signature verification bypass
+- Bond manipulation
+- Access control issues
+- Reentrancy attacks
+- Integer overflow/underflow
+- Logic errors
 
-2. **Key Management**
-   - Use hardware wallets (Ledger, Trezor)
-   - Implement multi-sig for contract ownership
-   - Use secure key management systems (AWS KMS, HashiCorp Vault)
+#### Out of Scope
 
-3. **Access Control**
-   - Implement role-based access control
-   - Use time-locks for sensitive operations
-   - Add emergency pause mechanisms
+- Off-chain services (future development)
+- Test scripts
+- Documentation typos
+- Already known issues
+- Issues in third-party dependencies (report to them directly)
 
-4. **Monitoring**
-   - Set up real-time monitoring for bond levels
-   - Alert systems for unusual activity
-   - Track refund claims and patterns
+### Bug Bounty Program
 
-## 🔍 Known Limitations
+**Status**: Not yet active (pending audit & mainnet launch)
 
-### Smart Contract Risks
+We plan to launch a bug bounty program after:
+1. Professional security audit
+2. Mainnet deployment
+3. TVL reaches $100k+
 
-1. **Bond Depletion**: If the bond is fully depleted, clients cannot receive refunds
-2. **Signature Replay**: Server must track used request commitments
-3. **Gas Costs**: Clients pay gas fees to claim refunds (~81k gas on Base Sepolia)
+### Known Limitations
 
-### System Design Risks
+The following are known and considered acceptable risks:
 
-1. **Centralized Facilitator**: The x402 protocol uses `https://x402.org/facilitator`
-2. **Server Trust**: Server must sign refund authorizations honestly
-3. **EIP-712 Security**: Depends on proper domain separator configuration
+1. **No Audit**: Contracts have NOT been audited
+2. **Testnet Only**: Not intended for mainnet production use yet
+3. **Bond Exhaustion**: Providers can run out of bond
+4. **Timeout Accuracy**: Block timestamp dependency
+5. **Gas Price Volatility**: EIP-712 confirmation costs vary
 
-## 🚨 Reporting Security Issues
+### Security Best Practices for Users
 
-If you discover a security vulnerability, please:
+#### For Service Providers
 
-1. **DO NOT** open a public issue
-2. Email the repository owner privately
-3. Include:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
+- Monitor bond levels regularly
+- Use hardware wallets for private keys
+- Never share private keys
+- Set appropriate `minProviderBond` thresholds
+- Test on testnet before mainnet
 
-## 📚 Security Resources
+#### For Clients
 
-- [Ethereum Smart Contract Best Practices](https://consensys.github.io/smart-contract-best-practices/)
-- [Solidity Security Considerations](https://docs.soliditylang.org/en/latest/security-considerations.html)
-- [x402 Protocol Documentation](https://docs.cdp.coinbase.com/x402/welcome)
-- [EIP-712: Typed structured data hashing and signing](https://eips.ethereum.org/EIPS/eip-712)
+- Verify contract addresses before interaction
+- Start with small test payments
+- Monitor timeout periods
+- Keep transaction receipts
+- Use reputable providers
 
-## ✅ Pre-Upload Checklist
+#### For Platform Operators
 
-Before uploading to GitHub, ensure:
+- Use multisig for `platformTreasury`
+- Implement monitoring and alerts
+- Regular security reviews
+- Incident response plan
+- Regular backups of critical data
 
-- [ ] No `.env` files committed
-- [ ] No private keys in code
-- [ ] No wallet addresses with real funds
-- [ ] Security notice in README
-- [ ] `.gitignore` properly configured
-- [ ] Temporary docs removed
-- [ ] Test receipts deleted
+### Security Audits
 
-## 📝 License Note
+**Current Status**: ⚠️ NOT AUDITED
 
-This software is provided "AS IS", without warranty of any kind, express or implied. See LICENSE for full terms.
+**Planned Audits**:
+- [ ] Internal review
+- [ ] Community review
+- [ ] Professional audit (planned)
+- [ ] Formal verification (future)
+
+### Hall of Fame
+
+Security researchers who responsibly disclose vulnerabilities will be recognized here:
+
+- TBD (be the first!)
+
+### Disclaimer
+
+This protocol is experimental and provided "as is" without warranties. Users assume all risks including but not limited to:
+
+- Smart contract bugs
+- Economic exploits  
+- Network failures
+- Loss of funds
+- Regulatory risks
+
+**DO NOT** use this protocol with funds you cannot afford to lose.
+
+### Contact
+
+For non-security issues:
+- GitHub Issues: https://github.com/your-username/X402/issues
+- Email: team@[your-domain].com
+
+---
+
+Thank you for helping keep X402 Insurance Protocol secure!
